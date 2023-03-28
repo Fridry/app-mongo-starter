@@ -3,11 +3,11 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { User } from '@prisma/client';
-import { UsersService } from 'src/users/users.service';
+import { UsersService } from 'src/modules/users/users.service';
 
 @Injectable()
 export class AuthService {
@@ -81,7 +81,7 @@ export class AuthService {
 
     const email = this.jwtService.decode(refreshToken)['email'];
 
-    const user = await this.usersService.user({ email });
+    const user = await this.usersService.findOne({ email });
 
     if (!user) {
       throw new NotFoundException(`User not found`);
