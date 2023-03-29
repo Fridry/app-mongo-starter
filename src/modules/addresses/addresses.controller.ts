@@ -25,12 +25,20 @@ export class AddressesController {
   create(@Body() data: AddressDto, @Request() request): Promise<Address> {
     const user = request.user as any;
 
-    console.log(user);
+    const createParams = {
+      ...data,
+      user: {
+        connect: {
+          id: user.id,
+        },
+      },
+    };
 
-    return this.addressesService.create({ ...data, user });
+    return this.addressesService.create(createParams);
   }
 
   @Get()
+  @UseGuards(JwtAuthGuard)
   findAll(
     @Query()
     queryParams: {
@@ -39,22 +47,17 @@ export class AddressesController {
       id?: string;
       userId?: string;
     },
+    @Request() request,
   ): Promise<Address[]> {
-    const { offset, limit, id, userId } = queryParams;
+    const { offset, limit } = queryParams;
 
-    const where = {};
-
-    if (id) {
-      where['id'] = id;
-    } else if (userId) {
-      where['userId'] = userId;
-    }
+    const userId = request.user.id as string;
 
     const params = {
       skip: offset ? +offset : 0,
       take: limit ? +limit : 100,
       where: {
-        id,
+        userId,
       },
     };
 
@@ -62,17 +65,28 @@ export class AddressesController {
   }
 
   @Get(':id')
+  @UseGuards(JwtAuthGuard)
   findOne(@Param('id') id: string) {
     return this.addressesService.findOne({ id });
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() data: UpdateAddressDto) {
-    return this.addressesService.update({ where: { id }, data });
+  @UseGuards(JwtAuthGuard)
+  update(
+    @Param('id') id: string,
+    @Body() data: UpdateAddressDto,
+    @Request() request,
+  ) {
+    const userId = request.user.id as string;
+
+    return this.addressesService.update({ where: { id }, data }, userId);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.addressesService.remove({ id });
+  @UseGuards(JwtAuthGuard)
+  remove(@Param('id') id: string, @Request() request) {
+    const userId = request.user.id as string;
+
+    return this.addressesService.remove({ id }, userId);
   }
 }

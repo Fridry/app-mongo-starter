@@ -1,10 +1,11 @@
 import {
   BadRequestException,
   Injectable,
-  NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { Prisma, Address } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { UsersService } from '../users/users.service';
 
 @Injectable()
 export class AddressesService {
@@ -49,31 +50,24 @@ export class AddressesService {
   async findOne(
     where: Prisma.AddressWhereUniqueInput,
   ): Promise<Address | null> {
-    const search = {};
-
-    if (where?.id) {
-      search['id'] = where.id;
-    }
-
-    if (!Object.entries(search)?.length) {
-      throw new NotFoundException(`Address not found`);
-    }
-
     const address = await this.prisma.address.findUnique({
-      where: search,
+      where,
     });
 
     return address;
   }
 
-  async update(params: {
-    where: Prisma.AddressWhereUniqueInput;
-    data: Prisma.AddressUpdateInput;
-  }): Promise<Address> {
+  async update(
+    params: {
+      where: Prisma.AddressWhereUniqueInput;
+      data: Prisma.AddressUpdateInput;
+    },
+    userId: string,
+  ): Promise<Address> {
     try {
       const { where, data } = params;
 
-      await this.findOne(where);
+      await this.validateUser(where, userId);
 
       const address = await this.prisma.address.update({
         where,
@@ -86,15 +80,31 @@ export class AddressesService {
     }
   }
 
-  async remove(where: Prisma.AddressWhereUniqueInput): Promise<void> {
+  async remove(
+    where: Prisma.AddressWhereUniqueInput,
+    userId: string,
+  ): Promise<void> {
     try {
-      await this.findOne(where);
+      await this.validateUser(where, userId);
 
       await this.prisma.address.delete({
         where,
       });
     } catch (error) {
       throw new BadRequestException(error);
+    }
+  }
+
+  private async validateUser(
+    where: Prisma.AddressWhereUniqueInput,
+    userId: string,
+  ): Promise<void> {
+    const addressFound = await this.findOne(where);
+
+    if (addressFound?.userId !== userId) {
+      console.log('Só pode o que é seu');
+
+      throw new UnauthorizedException('User not authorized');
     }
   }
 }

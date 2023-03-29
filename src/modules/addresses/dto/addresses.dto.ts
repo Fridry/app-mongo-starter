@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsPostalCode } from 'class-validator';
+import { IsString, IsNotEmpty, IsNumber } from 'class-validator';
 
 export class AddressDto {
   @IsNotEmpty()
@@ -6,7 +6,7 @@ export class AddressDto {
   street: string;
 
   @IsNotEmpty()
-  @IsString()
+  @IsNumber()
   number: number;
 
   @IsNotEmpty()
@@ -19,7 +19,6 @@ export class AddressDto {
 
   @IsNotEmpty()
   @IsString()
-  @IsPostalCode('BR')
   zipCode: string;
 
   @IsNotEmpty()

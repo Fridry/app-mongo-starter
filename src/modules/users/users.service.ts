@@ -42,9 +42,9 @@ export class UsersService {
 
       const user = await this.prisma.user.create({
         data: userData,
-        // include: {
-        //   addresses: true,
-        // },
+        include: {
+          addresses: true,
+        },
       });
 
       delete user.password;
@@ -71,9 +71,9 @@ export class UsersService {
         cursor,
         where,
         orderBy,
-        // include: {
-        //   addresses: true,
-        // },
+        include: {
+          addresses: true,
+        },
       });
 
       if (!users?.length) {
@@ -110,9 +110,9 @@ export class UsersService {
 
       const user = await this.prisma.user.findUnique({
         where: search,
-        // include: {
-        //   addresses: true,
-        // },
+        include: {
+          addresses: true,
+        },
       });
 
       if (!user) {
@@ -139,9 +139,9 @@ export class UsersService {
       const user = await this.prisma.user.update({
         where,
         data,
-        // include: {
-        //   addresses: true,
-        // },
+        include: {
+          addresses: true,
+        },
       });
 
       delete user.password;
