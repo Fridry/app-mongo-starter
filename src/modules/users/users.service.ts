@@ -6,7 +6,6 @@ import {
 } from '@nestjs/common';
 import { Prisma, User } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UsersService {
@@ -16,14 +15,7 @@ export class UsersService {
     try {
       const userExists = await this.prisma.user.findFirst({
         where: {
-          OR: [
-            {
-              email: data?.email,
-            },
-            {
-              cpf: data?.cpf,
-            },
-          ],
+          cpf: data?.cpf,
         },
       });
 
@@ -31,23 +23,18 @@ export class UsersService {
         throw new ConflictException(`User already exists`);
       }
 
-      const salt = await bcrypt.genSalt(10);
+      // const salt = await bcrypt.genSalt(10);
 
-      const hashedPassword = await bcrypt.hash(data?.password, salt);
+      // const hashedPassword = await bcrypt.hash(data?.password, salt);
 
-      const userData = {
-        ...data,
-        password: hashedPassword,
-      };
+      // const userData = {
+      //   ...data,
+      //   password: hashedPassword,
+      // };
 
       const user = await this.prisma.user.create({
-        data: userData,
-        include: {
-          addresses: true,
-        },
+        data,
       });
-
-      delete user.password;
 
       return user;
     } catch (error) {
@@ -71,22 +58,9 @@ export class UsersService {
         cursor,
         where,
         orderBy,
-        include: {
-          addresses: true,
-        },
       });
 
-      if (!users?.length) {
-        return users;
-      }
-
-      const serializedUsers: User[] = users.map((user: User) => {
-        delete user.password;
-
-        return user;
-      });
-
-      return serializedUsers;
+      return users;
     } catch (error) {
       throw new BadRequestException(error);
     }
@@ -100,8 +74,6 @@ export class UsersService {
         search['id'] = where.id;
       } else if (where?.cpf) {
         search['cpf'] = where.cpf;
-      } else if (where?.email) {
-        search['email'] = where.email;
       }
 
       if (!Object.entries(search)?.length) {
@@ -110,16 +82,11 @@ export class UsersService {
 
       const user = await this.prisma.user.findUnique({
         where: search,
-        include: {
-          addresses: true,
-        },
       });
 
       if (!user) {
         throw new NotFoundException(`User not found`);
       }
-
-      delete user.password;
 
       return user;
     } catch (error) {
@@ -139,12 +106,7 @@ export class UsersService {
       const user = await this.prisma.user.update({
         where,
         data,
-        include: {
-          addresses: true,
-        },
       });
-
-      delete user.password;
 
       return user;
     } catch (error) {

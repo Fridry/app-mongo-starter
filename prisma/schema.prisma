@@ -10,28 +10,200 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Auth {
+  id       String @id @default(uuid())
+  email    String @unique
+  password String
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user  User?
+  store Store?
+}
+
+model Profile {
+  id    String   @id @default(uuid())
+  name  String
+  email String?  @unique
+  phone String?
+  tags  String[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user    User?   @relation(fields: [userId], references: [id])
+  userId  String? @unique
+  store   Store?  @relation(fields: [storeId], references: [id])
+  storeId String? @unique
+}
+
 model User {
-  id           String   @id @default(uuid())
-  name         String
-  cpf          String   @unique
-  email        String   @unique
-  password     String
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  addresses    Address[] 
+  id   String @id @default(uuid())
+  cpf  String @unique
+  role Role   @default(USER)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  auth      Auth?    @relation(fields: [authId], references: [id])
+  authId    String?  @unique
+  address   Address? @relation(fields: [addressId], references: [id])
+  addressId String?  @unique
+
+  profile Profile?
+
+  orders     Order[]
+  deliveries Delivery[]
+  reviews    Review[]
 }
 
 model Address {
-  id           String   @id @default(uuid())
-  street       String
-  number       Int
-  city         String
-  state        String
-  zipCode      String
-  country      String
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id         String  @id @default(uuid())
+  street     String
+  number     Int
+  complement String?
+  zipCode    String
+  landmark   String?
+  city       String
+  state      String
+  country    String
 
-  user         User     @relation(fields: [userId], references: [id])
-  userId       String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  deliveries Delivery[]
+
+  store Store?
+  user  User?
+}
+
+model Product {
+  id          String   @id @default(uuid())
+  name        String
+  description String
+  price       Float
+  stock       Int
+  image       String?
+  tags        String[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  category   Category @relation(fields: [categoryId], references: [id])
+  categoryId String
+  store      Store    @relation(fields: [storeId], references: [id])
+  storeId    String
+
+  orderItems    OrderItem[]
+  deliveryItems DeliveryItem[]
+  reviews       Review[]
+}
+
+model Category {
+  id   String @id @default(uuid())
+  name String
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  products Product[]
+}
+
+model Order {
+  id     String @id @default(uuid())
+  total  Float
+  status String @default("pending")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user       User      @relation(fields: [userId], references: [id])
+  userId     String
+  delivery   Delivery? @relation(fields: [deliveryId], references: [id])
+  deliveryId String?
+
+  orderItems OrderItem[]
+}
+
+model OrderItem {
+  id       String @id @default(uuid())
+  quantity Int
+  price    Float
+
+  product   Product @relation(fields: [productId], references: [id])
+  productId String
+  order     Order   @relation(fields: [orderId], references: [id])
+  orderId   String
+}
+
+model Delivery {
+  id     String @id @default(uuid())
+  status String @default("pending")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  address   Address @relation(fields: [addressId], references: [id])
+  addressId String
+  user      User    @relation(fields: [userId], references: [id])
+  userId    String
+  store     Store   @relation(fields: [storeId], references: [id])
+  storeId   String
+
+  deliveryItems DeliveryItem[]
+  orderDetails  Order[]
+}
+
+model DeliveryItem {
+  id       String @id @default(uuid())
+  quantity Int
+
+  product    Product  @relation(fields: [productId], references: [id])
+  productId  String
+  delivery   Delivery @relation(fields: [deliveryId], references: [id])
+  deliveryId String
+}
+
+model Store {
+  id          String   @id @default(uuid())
+  cnpj        String   @unique
+  description String?
+  image       String?
+  role        Role     @default(STORE)
+  tags        String[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  address   Address? @relation(fields: [addressId], references: [id])
+  addressId String?  @unique
+  auth      Auth?    @relation(fields: [authId], references: [id])
+  authId    String?  @unique
+
+  products   Product[]
+  deliveries Delivery[]
+
+  profile Profile?
+}
+
+model Review {
+  id     String @id @default(uuid())
+  title  String
+  body   String
+  rating Int
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user      User    @relation(fields: [userId], references: [id])
+  userId    String
+  product   Product @relation(fields: [productId], references: [id])
+  productId String
+}
+
+enum Role {
+  USER
+  STORE
+  ADMIN
 }

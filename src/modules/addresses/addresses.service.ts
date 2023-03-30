@@ -5,7 +5,6 @@ import {
 } from '@nestjs/common';
 import { Prisma, Address } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { UsersService } from '../users/users.service';
 
 @Injectable()
 export class AddressesService {
@@ -57,17 +56,12 @@ export class AddressesService {
     return address;
   }
 
-  async update(
-    params: {
-      where: Prisma.AddressWhereUniqueInput;
-      data: Prisma.AddressUpdateInput;
-    },
-    userId: string,
-  ): Promise<Address> {
+  async update(params: {
+    where: Prisma.AddressWhereUniqueInput;
+    data: Prisma.AddressUpdateInput;
+  }): Promise<Address> {
     try {
       const { where, data } = params;
-
-      await this.validateUser(where, userId);
 
       const address = await this.prisma.address.update({
         where,
@@ -80,12 +74,9 @@ export class AddressesService {
     }
   }
 
-  async remove(
-    where: Prisma.AddressWhereUniqueInput,
-    userId: string,
-  ): Promise<void> {
+  async remove(where: Prisma.AddressWhereUniqueInput): Promise<void> {
     try {
-      await this.validateUser(where, userId);
+      // await this.validateUser(where, userId);
 
       await this.prisma.address.delete({
         where,
@@ -95,16 +86,16 @@ export class AddressesService {
     }
   }
 
-  private async validateUser(
-    where: Prisma.AddressWhereUniqueInput,
-    userId: string,
-  ): Promise<void> {
-    const addressFound = await this.findOne(where);
+  // private async validateUser(
+  //   where: Prisma.AddressWhereUniqueInput,
+  //   userId: string,
+  // ): Promise<void> {
+  //   const addressFound = await this.findOne(where);
 
-    if (addressFound?.userId !== userId) {
-      console.log('Só pode o que é seu');
+  //   if (addressFound?.user. !== userId) {
+  //     console.log('Só pode o que é seu');
 
-      throw new UnauthorizedException('User not authorized');
-    }
-  }
+  //     throw new UnauthorizedException('User not authorized');
+  //   }
+  // }
 }

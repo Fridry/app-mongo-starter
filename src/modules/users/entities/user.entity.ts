@@ -1,14 +1,13 @@
-import { User as UserPrisma } from '@prisma/client';
-import { Exclude } from 'class-transformer';
+import { Role, User as UserPrisma } from '@prisma/client';
 
 export class UserEntity implements UserPrisma {
   id: string;
-  name: string;
   cpf: string;
-  email: string;
+  role: Role;
 
-  @Exclude()
-  password: string;
+  addressId: string;
+  authId: string;
+  profileId?: string;
 
   createdAt: Date;
   updatedAt: Date;

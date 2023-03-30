@@ -20,7 +20,7 @@ export class AuthService {
   async validateUser(params: { email: string; password: string }) {
     const { password, email } = params;
 
-    const user = await this.prisma.user.findUnique({
+    const user = await this.prisma.auth.findUnique({
       where: {
         email,
       },
@@ -40,7 +40,7 @@ export class AuthService {
   }
 
   async login(user: User) {
-    const payload = { email: user.email, sub: user.id };
+    const payload = { cpf: user.cpf, sub: user.id };
 
     const accessToken = this.jwtService.sign(payload);
 
@@ -69,7 +69,7 @@ export class AuthService {
   }
 
   async refreshToken(refreshToken: string) {
-    const payload: User = await this.verificarRefreshToken(refreshToken);
+    const payload: any = await this.verificarRefreshToken(refreshToken);
 
     return this.login(payload);
   }
@@ -81,7 +81,11 @@ export class AuthService {
 
     const email = this.jwtService.decode(refreshToken)['email'];
 
-    const user = await this.usersService.findOne({ email });
+    const user = await this.prisma.auth.findUnique({
+      where: {
+        email,
+      },
+    });
 
     if (!user) {
       throw new NotFoundException(`User not found`);

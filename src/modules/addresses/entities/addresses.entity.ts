@@ -4,12 +4,14 @@ export class AddressEntity implements AddressPrisma {
   id: string;
   street: string;
   number: number;
+  complement: string;
+  landmark: string;
+  zipCode: string;
   city: string;
   state: string;
-  zipCode: string;
   country: string;
 
-  userId: string;
+  userId?: string;
 
   createdAt: Date;
   updatedAt: Date;

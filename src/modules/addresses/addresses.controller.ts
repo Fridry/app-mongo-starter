@@ -47,18 +47,12 @@ export class AddressesController {
       id?: string;
       userId?: string;
     },
-    @Request() request,
   ): Promise<Address[]> {
     const { offset, limit } = queryParams;
-
-    const userId = request.user.id as string;
 
     const params = {
       skip: offset ? +offset : 0,
       take: limit ? +limit : 100,
-      where: {
-        userId,
-      },
     };
 
     return this.addressesService.findAll(params);
@@ -72,21 +66,13 @@ export class AddressesController {
 
   @Patch(':id')
   @UseGuards(JwtAuthGuard)
-  update(
-    @Param('id') id: string,
-    @Body() data: UpdateAddressDto,
-    @Request() request,
-  ) {
-    const userId = request.user.id as string;
-
-    return this.addressesService.update({ where: { id }, data }, userId);
+  update(@Param('id') id: string, @Body() data: UpdateAddressDto) {
+    return this.addressesService.update({ where: { id }, data });
   }
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard)
   remove(@Param('id') id: string, @Request() request) {
-    const userId = request.user.id as string;
-
-    return this.addressesService.remove({ id }, userId);
+    return this.addressesService.remove({ id });
   }
 }
