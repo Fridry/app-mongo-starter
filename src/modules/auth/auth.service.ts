@@ -1,61 +1,148 @@
 import {
+  ConflictException,
   Injectable,
+  NotAcceptableException,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
-import { User } from '@prisma/client';
-import { UsersService } from 'src/modules/users/users.service';
+import { Auth, Prisma } from '@prisma/client';
 
 @Injectable()
 export class AuthService {
-  constructor(
-    private prisma: PrismaService,
-    private jwtService: JwtService,
-    private readonly usersService: UsersService,
-  ) {}
+  constructor(private prisma: PrismaService, private jwtService: JwtService) {}
+
+  async create(data: Prisma.AuthCreateInput): Promise<Auth> {
+    try {
+      const authExists = await this.prisma.auth.findFirst({
+        where: {
+          email: data?.email,
+        },
+      });
+
+      if (authExists) {
+        throw new ConflictException(`Email already in use`);
+      }
+
+      const hashedPassword = await this.hashPassword(data.password);
+
+      const authData = {
+        ...data,
+        password: hashedPassword,
+      };
+
+      const auth = await this.prisma.auth.create({ data: authData });
+
+      return auth;
+    } catch (error) {
+      throw new Error(`Error creating auth: ${error.message}`);
+    }
+  }
+
+  async findAll(params: {
+    skip?: number;
+    take?: number;
+    cursor?: Prisma.UserWhereUniqueInput;
+    where?: Prisma.UserWhereInput;
+    orderBy?: Prisma.UserOrderByWithRelationInput;
+  }): Promise<Auth[]> {
+    const { skip, take, cursor, where, orderBy } = params;
+
+    const auth = await this.prisma.auth.findMany({
+      skip,
+      take,
+      cursor,
+      where,
+      orderBy,
+    });
+
+    return auth;
+  }
+
+  async findOneByEmail(
+    where: Prisma.AuthWhereUniqueInput,
+  ): Promise<Auth | null> {
+    const { email } = where;
+
+    const auth = this.prisma.auth.findFirst({
+      where: { email },
+    });
+
+    if (!auth) {
+      throw new NotFoundException(`Auth not found`);
+    }
+
+    return auth;
+  }
+
+  async findOneById(where: Prisma.AuthWhereUniqueInput): Promise<Auth | null> {
+    try {
+      const { id } = where;
+
+      const auth = await this.prisma.auth.findFirst({
+        where: { id },
+      });
+
+      if (!auth) {
+        throw new NotFoundException(`Auth not found`);
+      }
+
+      return auth;
+    } catch (error) {
+      throw new Error(`Error finding auth by id: ${error.message}`);
+    }
+  }
+
+  async update(params: {
+    where: Prisma.AuthWhereUniqueInput;
+    data: Prisma.AuthUpdateInput;
+  }): Promise<Auth> {
+    try {
+      const { where, data } = params;
+
+      await this.findOneById(where);
+
+      const auth = await this.prisma.auth.update({
+        where,
+        data,
+      });
+
+      return auth;
+    } catch (error) {
+      throw new Error(`Error updating auth: ${error.message}`);
+    }
+  }
+
+  async delete(where: Prisma.AuthWhereUniqueInput): Promise<void> {
+    try {
+      await this.findOneById(where);
+
+      await this.prisma.auth.delete({
+        where,
+      });
+    } catch (error) {
+      throw new Error(`Error deleting auth: ${error.message}`);
+    }
+  }
 
   async validateUser(params: { email: string; password: string }) {
     const { password, email } = params;
 
-    const user = await this.prisma.auth.findUnique({
-      where: {
-        email,
-      },
-    });
+    const auth = await this.findOneByEmail({ email });
 
-    if (!user) {
-      throw new NotFoundException(`No user found for email: ${email}`);
+    if (!auth) {
+      throw new NotAcceptableException(`No user found for email: ${email}`);
     }
 
-    const hashedPassword = user?.password;
+    const hashedPassword = auth?.password;
 
     await this.verifyPassword({ password, hashedPassword });
 
-    delete user.password;
+    delete auth.password;
 
-    return user;
-  }
-
-  async login(user: User) {
-    const payload = { cpf: user.cpf, sub: user.id };
-
-    const accessToken = this.jwtService.sign(payload);
-
-    const refreshToken = this.jwtService.sign(payload, {
-      expiresIn: process.env.JWT_REFRESH_TOKEN_EXPIRES_IN,
-    });
-
-    return {
-      access_token: accessToken,
-      refresh_token: refreshToken,
-    };
-  }
-
-  logout() {
-    return 'This action adds a new auth';
+    return auth;
   }
 
   async verifyPassword(params: { password: string; hashedPassword: string }) {
@@ -68,43 +155,21 @@ export class AuthService {
     }
   }
 
-  async refreshToken(refreshToken: string) {
-    const payload: any = await this.verificarRefreshToken(refreshToken);
+  async signIn(auth: Auth) {
+    const payload = { email: auth.email, sub: auth.id };
 
-    return this.login(payload);
+    const accessToken = this.jwtService.sign(payload);
+
+    return {
+      access_token: accessToken,
+    };
   }
 
-  private async verificarRefreshToken(refreshToken: string) {
-    if (!refreshToken) {
-      throw new NotFoundException(`Refresh token not found`);
-    }
+  async hashPassword(password: string) {
+    const salt = await bcrypt.genSalt(10);
 
-    const email = this.jwtService.decode(refreshToken)['email'];
+    const hashedPassword = await bcrypt.hash(password, salt);
 
-    const user = await this.prisma.auth.findUnique({
-      where: {
-        email,
-      },
-    });
-
-    if (!user) {
-      throw new NotFoundException(`User not found`);
-    }
-
-    try {
-      this.jwtService.verify(refreshToken);
-
-      return user;
-    } catch (error) {
-      if (error.name === 'JsonWebTokenError') {
-        throw new UnauthorizedException('Invalid Token');
-      }
-
-      if (error.name === 'TokenExpiredError') {
-        throw new UnauthorizedException('Expired Token');
-      }
-
-      throw new UnauthorizedException(error.name);
-    }
+    return hashedPassword;
   }
 }

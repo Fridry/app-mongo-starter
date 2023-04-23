@@ -6,7 +6,6 @@ import {
   Dependencies,
 } from '@nestjs/common';
 import { AuthService } from '../auth.service';
-import { User } from '@prisma/client';
 
 @Injectable()
 @Dependencies(AuthService)
@@ -18,11 +17,11 @@ export class LocalStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(email: string, password: string): Promise<any> {
-    const user = await this.authService.validateUser({ email, password });
+    const auth = await this.authService.validateUser({ email, password });
 
-    if (!user) {
+    if (!auth) {
       throw new UnauthorizedException();
     }
-    return user;
+    return auth;
   }
 }

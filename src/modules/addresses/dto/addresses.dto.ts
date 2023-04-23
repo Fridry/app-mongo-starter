@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsNumber } from 'class-validator';
+import { IsString, IsNotEmpty, IsNumber, IsEmpty } from 'class-validator';
 
 export class AddressDto {
   @IsNotEmpty()
@@ -8,6 +8,16 @@ export class AddressDto {
   @IsNotEmpty()
   @IsNumber()
   number: number;
+
+  @IsEmpty()
+  complement?: string;
+
+  @IsEmpty()
+  landmark?: string;
+
+  @IsNotEmpty()
+  @IsString()
+  zipCode: string;
 
   @IsNotEmpty()
   @IsString()
@@ -19,9 +29,8 @@ export class AddressDto {
 
   @IsNotEmpty()
   @IsString()
-  zipCode: string;
-
-  @IsNotEmpty()
-  @IsString()
   country: string;
+
+  @IsEmpty()
+  authId?: string;
 }

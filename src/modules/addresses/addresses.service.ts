@@ -1,25 +1,58 @@
-import {
-  BadRequestException,
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { Prisma, Address } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { AddressDto } from './dto/addresses.dto';
 
 @Injectable()
 export class AddressesService {
   constructor(private prisma: PrismaService) {}
 
-  async create(data: Prisma.AddressCreateInput): Promise<Address> {
-    try {
-      const address = await this.prisma.address.create({
-        data,
+  async create(data: AddressDto): Promise<Address> {
+    const {
+      authId,
+      state,
+      number,
+      complement,
+      zipCode,
+      landmark,
+      city,
+      street,
+      country,
+    } = data;
+
+    const user = await this.prisma.user.findFirst({
+      where: {
+        authId,
+      },
+    });
+
+    if (!user) {
+      throw new BadRequestException(`User not found`);
+    }
+
+    const newAddress = await this.prisma.$transaction(async (prisma) => {
+      const address = await prisma.address.create({
+        data: {
+          state,
+          number,
+          complement,
+          zipCode,
+          landmark,
+          city,
+          street,
+          country,
+          user: {
+            connect: {
+              id: user.id,
+            },
+          },
+        },
       });
 
       return address;
-    } catch (error) {
-      throw new BadRequestException(error);
-    }
+    });
+
+    return newAddress;
   }
 
   async findAll(params: {
@@ -29,21 +62,17 @@ export class AddressesService {
     where?: Prisma.AddressWhereInput;
     orderBy?: Prisma.AddressOrderByWithRelationInput;
   }): Promise<Address[]> {
-    try {
-      const { skip, take, cursor, where, orderBy } = params;
+    const { skip, take, cursor, where, orderBy } = params;
 
-      const addresses = await this.prisma.address.findMany({
-        skip,
-        take,
-        cursor,
-        where,
-        orderBy,
-      });
+    const addresses = await this.prisma.address.findMany({
+      skip,
+      take,
+      cursor,
+      where,
+      orderBy,
+    });
 
-      return addresses;
-    } catch (error) {
-      throw new BadRequestException(error);
-    }
+    return addresses;
   }
 
   async findOne(
@@ -60,42 +89,23 @@ export class AddressesService {
     where: Prisma.AddressWhereUniqueInput;
     data: Prisma.AddressUpdateInput;
   }): Promise<Address> {
-    try {
-      const { where, data } = params;
+    const { where, data } = params;
 
-      const address = await this.prisma.address.update({
-        where,
-        data,
-      });
+    await this.findOne(where);
 
-      return address;
-    } catch (error) {
-      throw new BadRequestException(error);
-    }
+    const address = await this.prisma.address.update({
+      where,
+      data,
+    });
+
+    return address;
   }
 
   async remove(where: Prisma.AddressWhereUniqueInput): Promise<void> {
-    try {
-      // await this.validateUser(where, userId);
+    await this.findOne(where);
 
-      await this.prisma.address.delete({
-        where,
-      });
-    } catch (error) {
-      throw new BadRequestException(error);
-    }
+    await this.prisma.address.delete({
+      where,
+    });
   }
-
-  // private async validateUser(
-  //   where: Prisma.AddressWhereUniqueInput,
-  //   userId: string,
-  // ): Promise<void> {
-  //   const addressFound = await this.findOne(where);
-
-  //   if (addressFound?.user. !== userId) {
-  //     console.log('Só pode o que é seu');
-
-  //     throw new UnauthorizedException('User not authorized');
-  //   }
-  // }
 }

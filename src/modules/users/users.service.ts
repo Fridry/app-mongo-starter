@@ -6,40 +6,53 @@ import {
 } from '@nestjs/common';
 import { Prisma, User } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-
+import { UserDto } from './dto/user.dto';
+import { AuthService } from '../auth/auth.service';
 @Injectable()
 export class UsersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private authService: AuthService,
+  ) {}
 
-  async create(data: Prisma.UserCreateInput): Promise<User> {
-    try {
-      const userExists = await this.prisma.user.findFirst({
-        where: {
-          cpf: data?.cpf,
+  async create(data: UserDto): Promise<User> {
+    const { cpf, email, name, phone, tags, password } = data;
+
+    const userExists = await this.prisma.user.findFirst({
+      where: {
+        OR: [{ cpf }, { auth: { email } }, { profile: { email } }],
+      },
+    });
+
+    if (userExists) {
+      throw new ConflictException(`User already exists`);
+    }
+
+    const newUser = this.prisma.$transaction(async (prisma) => {
+      const user = await prisma.user.create({
+        data: {
+          cpf,
+          auth: {
+            create: {
+              email,
+              password: await this.authService.hashPassword(password),
+            },
+          },
+          profile: {
+            create: {
+              name,
+              email,
+              phone,
+              tags,
+            },
+          },
         },
       });
 
-      if (userExists) {
-        throw new ConflictException(`User already exists`);
-      }
-
-      // const salt = await bcrypt.genSalt(10);
-
-      // const hashedPassword = await bcrypt.hash(data?.password, salt);
-
-      // const userData = {
-      //   ...data,
-      //   password: hashedPassword,
-      // };
-
-      const user = await this.prisma.user.create({
-        data,
-      });
-
       return user;
-    } catch (error) {
-      throw new BadRequestException(error);
-    }
+    });
+
+    return newUser;
   }
 
   async findAll(params: {
@@ -49,80 +62,68 @@ export class UsersService {
     where?: Prisma.UserWhereInput;
     orderBy?: Prisma.UserOrderByWithRelationInput;
   }): Promise<User[]> {
-    try {
-      const { skip, take, cursor, where, orderBy } = params;
+    const { skip, take, cursor, where, orderBy } = params;
 
-      const users = await this.prisma.user.findMany({
-        skip,
-        take,
-        cursor,
-        where,
-        orderBy,
-      });
+    const users = await this.prisma.user.findMany({
+      skip,
+      take,
+      cursor,
+      where,
+      orderBy,
+    });
 
-      return users;
-    } catch (error) {
-      throw new BadRequestException(error);
-    }
+    return users;
   }
 
   async findOne(where: Prisma.UserWhereUniqueInput): Promise<User | null> {
-    try {
-      const search = {};
+    const search = {};
 
-      if (where?.id) {
-        search['id'] = where.id;
-      } else if (where?.cpf) {
-        search['cpf'] = where.cpf;
-      }
-
-      if (!Object.entries(search)?.length) {
-        throw new NotFoundException(`User not found`);
-      }
-
-      const user = await this.prisma.user.findUnique({
-        where: search,
-      });
-
-      if (!user) {
-        throw new NotFoundException(`User not found`);
-      }
-
-      return user;
-    } catch (error) {
-      throw new BadRequestException(error);
+    if (where?.id) {
+      search['id'] = where.id;
+    } else if (where?.cpf) {
+      search['cpf'] = where.cpf;
     }
+
+    if (!Object.entries(search)?.length) {
+      throw new NotFoundException(`User not found`);
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: search,
+      include: {
+        address: true,
+        profile: true,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException(`User not found`);
+    }
+
+    return user;
   }
 
   async update(params: {
     where: Prisma.UserWhereUniqueInput;
     data: Prisma.UserUpdateInput;
   }): Promise<User> {
-    try {
-      const { where, data } = params;
+    const { where, data } = params;
 
-      await this.findOne(where);
+    await this.findOne(where);
 
-      const user = await this.prisma.user.update({
-        where,
-        data,
-      });
+    const user = await this.prisma.user.update({
+      where,
+      data,
+    });
 
-      return user;
-    } catch (error) {
-      throw new BadRequestException(error);
-    }
+    return user;
   }
 
   async delete(where: Prisma.UserWhereUniqueInput): Promise<void> {
-    try {
-      await this.findOne(where);
+    await this.findOne(where);
 
-      await this.prisma.user.delete({
-        where,
-      });
-    } catch (error) {
-      throw new BadRequestException(error);
-    }
+    await this.prisma.user.delete({
+      where,
+    });
   }
 }

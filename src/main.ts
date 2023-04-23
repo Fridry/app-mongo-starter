@@ -3,6 +3,7 @@ import { HttpAdapterHost, NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { PrismaClientExceptionFilter } from './utils/prisma-client-exception.filter';
 import { HttpExceptionFilter } from './utils/http-exception.filter';
+import { PrismaService } from './modules/prisma/prisma.service';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -14,6 +15,9 @@ async function bootstrap() {
       forbidNonWhitelisted: true,
     }),
   );
+
+  const prismaService = app.get(PrismaService);
+  await prismaService.enableShutdownHooks(app);
 
   const { httpAdapter } = app.get(HttpAdapterHost);
   app.useGlobalFilters(

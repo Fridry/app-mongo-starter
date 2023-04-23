@@ -27,11 +27,7 @@ export class AddressesController {
 
     const createParams = {
       ...data,
-      user: {
-        connect: {
-          id: user.id,
-        },
-      },
+      userEmail: user.email,
     };
 
     return this.addressesService.create(createParams);

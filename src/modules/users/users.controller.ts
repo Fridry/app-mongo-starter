@@ -44,14 +44,14 @@ export class UsersController {
   }
 
   @Patch(':id')
-  // @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard)
   update(@Param('id') id: string, @Body() data: UpdateUserDto) {
     return this.usersService.update({ where: { id }, data });
   }
 
   @Delete(':id')
-  // @UseGuards(JwtAuthGuard)
-  remove(@Param('id') id: string) {
+  @UseGuards(JwtAuthGuard)
+  delete(@Param('id') id: string) {
     return this.usersService.delete({ id });
   }
 }
